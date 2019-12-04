@@ -1,0 +1,66 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+"""
+demo024_profit.py  定义买入卖出策略，回测历史数据
+"""
+import numpy as np
+import matplotlib.pyplot as mp
+import datetime as dt
+
+
+def dmy2ymd(dmy):
+    # 日期转换函数
+    dmy = str(dmy, encoding='utf-8')
+    time = dt.datetime.strptime(dmy, '%d-%m-%Y').date()
+    t = time.strftime('%Y-%m-%d')
+    return t
+
+dates, opening_prices, highest_prices, \
+    lowest_prices, closing_prices = \
+    np.loadtxt(
+        '../da_data/aapl.csv', delimiter=',',
+        usecols=(1, 3, 4, 5, 6),
+        dtype='M8[D], f8, f8, f8, f8',
+        unpack=True, converters={1: dmy2ymd})
+
+# 画图
+mp.figure('AAPL', facecolor='lightgray')
+mp.title('AAPL', fontsize=18)
+mp.grid(linestyle=':')
+mp.xlabel('Date', fontsize=14)
+mp.ylabel('Closing Price', fontsize=14)
+# 设置刻度定位器
+import matplotlib.dates as md
+ax = mp.gca()
+ax.xaxis.set_major_locator(
+    md.WeekdayLocator(byweekday=md.MO))
+ax.xaxis.set_minor_locator(md.DayLocator())
+ax.xaxis.set_major_formatter(
+    md.DateFormatter('%Y/%m/%d'))
+# 把dates转成适合mp绘图的格式
+dates = dates.astype(md.datetime.datetime)
+
+
+def profit(open, high, low, close):
+    # 定义买入卖出策略，计算当天收益率
+    buying = open * 0.99
+    if (low < buying < high):
+        return (close - buying) / buying
+    return np.nan
+
+# 求30天的收益率
+profits = np.vectorize(profit)(
+    opening_prices, highest_prices, lowest_prices,
+    closing_prices)
+print(profits)
+
+isnan = np.isnan(profits)  # isnan的掩码
+profits = profits[~isnan]
+dates = dates[~isnan]
+mp.plot(dates, profits, 'o-', color='orangered',
+        label='profits')
+print(profits.mean())
+
+mp.legend()
+mp.gcf().autofmt_xdate()
+mp.show()
